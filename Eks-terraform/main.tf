@@ -1,25 +1,38 @@
-# Get VPC data
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "example" {
+  name               = "eks-cluster-cloud"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "example-AmazonEKSClusterPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.example.name
+}
+
+#get vpc data
 data "aws_vpc" "default" {
   default = true
 }
-
-# Get public subnets for cluster
+#get public subnets for cluster
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
   }
-
-  # Optional: You can add specific filters here if you only want subnets from specific AZs
-  tags = {
-    "kubernetes.io/cluster/${aws_eks_cluster.example.name}" = "shared"
-  }
 }
-
-# Get availability zones for EKS control plane (use at least two supported AZs)
-data "aws_availability_zones" "available" {}
-
-# Cluster provision
+#cluster provision
 resource "aws_eks_cluster" "example" {
   name     = "EKS_CLOUD"
   role_arn = aws_iam_role.example.arn
